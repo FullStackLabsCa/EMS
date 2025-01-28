@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.Random;
 
 @Service
@@ -58,11 +59,16 @@ public class OtpService {
             previousOtp.setStatus(Status.EXPIRED);
             repository.updateOtpStatus(previousOtp.getStatus(), String.valueOf(customer.getId()));
             Otp latestOtp = repository.getAllOtpForCustomer(String.valueOf(customer.getId())).get(allOtpForCustomer.size() - 1);
-            latestOtp.setWindow1(String.valueOf(WindowLockStatus.INACTIVE));
-            latestOtp.setWindow2(String.valueOf(WindowLockStatus.INACTIVE));
-            otpDTO.setWindowOneLockedStatus(WindowLockStatus.INACTIVE);
-            otpDTO.setWindowTwoLockedStatus(WindowLockStatus.INACTIVE);
-            Duration duration = Duration.between(latestOtp.getUpdated_at(), LocalDateTime.now());
+            if(Objects.equals(previousOtp.getWindow1(), String.valueOf(WindowLockStatus.IN_PROGRESS))){
+                latestOtp.setWindow1(String.valueOf(WindowLockStatus.IN_PROGRESS));
+                latestOtp.setWindow2(String.valueOf(WindowLockStatus.INACTIVE));
+            }else{
+                latestOtp.setWindow1(String.valueOf(WindowLockStatus.INACTIVE));
+                latestOtp.setWindow2(String.valueOf(WindowLockStatus.INACTIVE));
+//                otpDTO.setWindowOneLockedStatus(WindowLockStatus.INACTIVE);
+//                otpDTO.setWindowTwoLockedStatus(WindowLockStatus.INACTIVE);
+            }
+            Duration duration = Duration.between(latestOtp.getUpdatedAt(), LocalDateTime.now());
             handleOtpLockStatus(otpDTO, latestOtp, duration, allOtpForCustomer);
         }
 
@@ -94,7 +100,7 @@ public class OtpService {
     }
 
     private void processSlidingWindow(OtpDTO otpDTO, Otp latestOtp, Duration duration, List<Otp> allOtp) {
-        if (isWindowInactive(WindowLockStatus.valueOf(latestOtp.getWindow1())) || isWindowInactive(WindowLockStatus.valueOf(latestOtp.getWindow2()))) {
+        if (isWindowInactive(WindowLockStatus.valueOf(latestOtp.getWindow1())) && isWindowInactive(WindowLockStatus.valueOf(latestOtp.getWindow2()))) {
             generateNewOtp(otpDTO);
         } else if (latestOtp.getWindow1() == String.valueOf(WindowLockStatus.IN_PROGRESS)) {
             handleWindowProgress(otpDTO, allOtp, duration, window1, WindowLockStatus.EXPIRED, "Window 1");
@@ -165,8 +171,8 @@ public class OtpService {
         Otp otp = new Otp();
         otp.setId(otpDTO.getId());
         otp.setStatus(otpDTO.getStatus());
-        otp.setCreated_at(LocalDateTime.now());
-        otp.setUpdated_at(LocalDateTime.now());
+        otp.setCreatedAt(LocalDateTime.now());
+        otp.setUpdatedAt(LocalDateTime.now());
         otp.setCustomerId(otpDTO.getCustomerId());
         otp.setCurrentOtp(otpDTO.getCurrentOtp());
         otp.setLockedStatus(otpDTO.getLockedStatus());
@@ -180,32 +186,45 @@ public class OtpService {
             throw new OtpVerificationException("No OTPs found for customer ID: " + otpDTO.getCustomerId());
         }
         Otp latestOtp = allOtpForCustomer.get(allOtpForCustomer.size() - 1);
+        long attemptsCount = repository.findLatestAttemptForStatus(Status.GENERATED);
         if (otpDTO.getCurrentOtp().equals(latestOtp.getCurrentOtp())) {
-            if (verifyAttempts(allOtpForCustomer)) {
-                otpDTO.setStatus(Status.VERIFIED);
+            if (attemptsCount > 3) {
+                latestOtp.setStatus(Status.VERIFIED);
                 repository.updateOtpStatus(Status.VERIFIED, otpDTO.getCustomerId());
                 allOtpForCustomer.forEach(customer -> customer.setStatus(Status.DISCARDED));
+                repository.updateAttempts(1, otpDTO.getCurrentOtp());
             } else {
-                otpDTO.setStatus(Status.ATTEMPT_EXCEEDED);
-                repository.updateOtpStatus(Status.ATTEMPT_EXCEEDED, otpDTO.getCustomerId());
+                latestOtp.setStatus(Status.ATTEMPT_EXCEEDED);
+                repository.updateOtpStatus(Status.ATTEMPT_EXCEEDED, latestOtp.getCustomerId());
+                latestOtp.setWindow1(String.valueOf(WindowLockStatus.IN_PROGRESS));
+                repository.save(latestOtp);
                 throw new OtpVerificationException("Maximum OTP verification attempts exceeded for customer ID: " + otpDTO.getCustomerId());
             }
         } else {
-            otpDTO.setStatus(Status.EXPIRED);
-            long expiredCount = allOtpForCustomer.stream()
-                    .filter(customer -> customer.getStatus().equals(Status.EXPIRED)).count();
-            if (expiredCount <=3) {
+//            latestOtp.setStatus(Status.EXPIRED);
+            if(attemptsCount >= 3){
                 latestOtp.setLockedStatus(LockedStatus.ATTEMPT_LOCK);
                 latestOtp.setWindow1(String.valueOf(WindowLockStatus.IN_PROGRESS));
-            }else{
-                latestOtp.setLockedStatus(LockedStatus.VALIDATION_LOCK);
-                latestOtp.setWindow1(String.valueOf(WindowLockStatus.EXPIRED));
-                latestOtp.setWindow2(String.valueOf(WindowLockStatus.IN_PROGRESS));
+                repository.save(latestOtp);
+                throw new OtpVerificationException("Invalid OTP for customer ID: " + otpDTO.getCustomerId());
+            }else {
+                long expiredCount = allOtpForCustomer.stream()
+                        .filter(customer -> customer.getStatus().equals(Status.EXPIRED)).count();
+                if (expiredCount >=3) {
+                    latestOtp.setLockedStatus(LockedStatus.ATTEMPT_LOCK);
+                    latestOtp.setWindow1(String.valueOf(WindowLockStatus.IN_PROGRESS));
+                }else{
+//                    latestOtp.setLockedStatus(LockedStatus.VALIDATION_LOCK);
+//                    latestOtp.setWindow1(String.valueOf(WindowLockStatus.EXPIRED));
+//                    latestOtp.setWindow2(String.valueOf(WindowLockStatus.IN_PROGRESS));
+                    attemptsCount = attemptsCount+1;
+                    repository.updateAttempts(attemptsCount, latestOtp.getCurrentOtp());
+                }
+               // repository.updateOtpStatus(Status.EXPIRED, otpDTO.getCustomerId());
+                throw new OtpVerificationException("Invalid OTP for customer ID: " + otpDTO.getCustomerId());
             }
-            repository.updateOtpStatus(Status.EXPIRED, otpDTO.getCustomerId());
-            throw new OtpVerificationException("Invalid OTP for customer ID: " + otpDTO.getCustomerId());
         }
-        return otpDTO;
+        return convertToDTO(latestOtp);
     }
 
     public OtpDTO getStatus(String customerId) {

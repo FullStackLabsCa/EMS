@@ -28,4 +28,15 @@ public interface OtpRepository extends JpaRepository<Otp, Long> {
     @Transactional
     @Query("UPDATE Otp o SET o.lockedStatus = :lockedStatus WHERE o.customerId = :customerId")
     void updateLockedStatus(LockedStatus lockedStatus, Long customerId);
+
+    @Modifying
+    @Transactional
+    @Query("UPDATE Otp o SET o.attempts = :attempts WHERE o.currentOtp = :currentOtp")
+    void updateAttempts(long attempts, String currentOtp);
+
+    @Query("SELECT o.attempts FROM Otp o WHERE o.status = ?1 ORDER BY o.createdAt DESC")
+    long findLatestAttemptForStatus(Status status);
+
+
+
 }

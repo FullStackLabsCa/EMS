@@ -20,8 +20,8 @@ public class Otp {
     long id;
 
     String currentOtp;
-    LocalDateTime created_at;
-    LocalDateTime updated_at;
+    LocalDateTime createdAt;
+    LocalDateTime updatedAt;
     LockedStatus lockedStatus;
     @Enumerated(EnumType.STRING)
     Status status;
