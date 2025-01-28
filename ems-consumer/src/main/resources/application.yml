@@ -1,0 +1,30 @@
+server.port: 8080
+
+# just mentioning it here for later discussion when we visit
+# spring cloud config server
+#spring.cloud.config.server.url = http://config-server:8888
+
+spring:
+  application.name: spring-boot-app
+  datasource:
+    url: jdbc:postgresql://localhost:5432/ems_db
+    username: postgres
+    password: postgres
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      idle-timeout: 30000
+      connection-timeout: 20000
+  jpa:
+    hibernate.ddl-auto: update
+    show-sql: true
+  artemis:
+    mode: native
+    host: localhost
+    port: 61616
+    user: artemis
+    password: artemis
+
+max-otp-attempts: 5
+reset-first-otp-window: 2
+reset-Second-otp-window: 8
