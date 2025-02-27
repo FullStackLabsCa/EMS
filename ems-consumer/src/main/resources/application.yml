@@ -32,8 +32,8 @@ otp:  "otpQueue"
 
 twilio:
   account:
-    sid: ACc01c46112c3820c2e0204013b764417e
+    sid: "${TWILLIO_SID}"
   auth:
-    token: c0f3e4a5904fc5ad375bc47a6c444dc7
+    token: "${TWILLIO_TOKEN}"
   phone:
     from: "+1x6475404420"
