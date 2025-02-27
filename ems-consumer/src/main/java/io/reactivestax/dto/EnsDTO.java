@@ -1,21 +1,17 @@
 package io.reactivestax.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import io.reactivestax.validations.NotificationType;
+import io.reactivestax.validations.enums.NotificationType;
 import io.reactivestax.validations.groups.CallGroup;
 import io.reactivestax.validations.groups.EmailGroup;
 import io.reactivestax.validations.groups.SmsGroup;
-import jakarta.validation.constraints.Pattern;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import org.hibernate.validator.constraints.Length;
-
-import java.util.List;
+import jakarta.validation.constraints.Pattern;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @NoArgsConstructor
 @AllArgsConstructor

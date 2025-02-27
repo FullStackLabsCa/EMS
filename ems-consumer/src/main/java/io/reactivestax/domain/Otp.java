@@ -1,10 +1,12 @@
 package io.reactivestax.domain;
 
-import io.reactivestax.validations.Status;
+import io.reactivestax.validations.enums.Status;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Data
@@ -17,8 +19,12 @@ public class Otp {
     long id;
 
     String currentOtp;
-    long timestamp;
+    LocalDateTime created_at;
+    LocalDateTime updated_at;
+    Boolean locked;
+    @Enumerated(EnumType.STRING)
     Status status;
     long attempts;
     String customerId;
+    private String notificationType;
 }

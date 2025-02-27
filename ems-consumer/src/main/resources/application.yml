@@ -1,4 +1,4 @@
-server.port: 8080
+server.port: 8083
 
 # just mentioning it here for later discussion when we visit
 # spring cloud config server
@@ -25,6 +25,15 @@ spring:
     user: artemis
     password: artemis
 
-max-otp-attempts: 5
-reset-first-otp-window: 2
-reset-Second-otp-window: 8
+queue:
+  name: "ens-queue"
+
+otp:  "otpQueue"
+
+twilio:
+  account:
+    sid: ACc01c46112c3820c2e0204013b764417e
+  auth:
+    token: c0f3e4a5904fc5ad375bc47a6c444dc7
+  phone:
+    from: "+1x6475404420"
